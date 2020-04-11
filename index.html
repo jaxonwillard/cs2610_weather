@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Assn 5 Weather Report</title>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.11/dist/vue.js"></script>
+<style>
+.shadowed {
+	text-shadow: 1px 1px 2px black;
+	color:       black;
+}
+
+.stuff-box {
+	font-family: 'helvetica neue', helvetica, sans-serif;
+	color: white;
+	letter-spacing: 1px;
+	text-transform: capitalize;
+	text-align: center;
+	padding: 3px 10px;
+	margin: 10px;
+	cursor: pointer;
+	border-radius: 10px;
+	border-width: 2px;
+	border-style: solid;
+}
+
+.timestamp {
+    font-size: smaller;
+    font-family: monospace;
+    padding: 0px 10px;
+}
+
+.red {
+	border-color: rgb(255,0,0);
+	background:   rgb(180,60,60);
+	box-shadow: 1px 1px 2px rgba(200,0,0,0.4);
+}
+
+.aquamarine {
+	border-color: turquoise;
+	background:   aquamarine;
+	box-shadow: 1px 1px 2px cornflowerblue;
+}
+
+.blue {
+	border-color: rgb(0,0,255);
+	background:   rgb(60,60,180);
+	box-shadow: 1px 1px 2px rgba(0,0,200,0.4);
+}
+
+.green {
+	border-color: rgb(0,255,0);
+	background:   rgb(60,180,60);
+	box-shadow: 1px 1px 2px rgba(0,200,0,0.4);
+}
+
+.black {
+    border-color: rgb(0,0,0);
+    background:   rgb(75,75,75);
+    box-shadow: 1px 1px 2px rgba(200,200,0,0.4);
+}
+
+.gray {
+	border-color: black;
+	background : grey;
+	box-shadow: gainsboro;
+}
+
+
+</style>
+
+
+</head>
+
+<body>
+
+
+<div id='app' >
+    <div v-if="calls < 2">
+        <h1>Currently Loading</h1>
+        <h1>{{ calls }}/2 fetches completed </h1>
+        <img src="waiting.jpg">
+    </div>
+
+    <div v-if="calls ==2">
+    <div class="shadowed stuff-box blue" >
+
+        <h2>Current Conditions</h2>
+        <p>Current Weather Conditions @ {{ current_weather_data['current']['date_time'] }}</p>
+        <ul>
+            <li>Currently {{ current_weather_data['current']['temp'] }}F</li>
+            <li>High {{ current_weather_data['daily'][0]['temp']['max'] }}F </li>
+            <li>Low {{ current_weather_data['daily'][0]['temp']['min'] }}F </li>
+            <li>{{ current_weather_data['current']['weather'][0]['description'] }}</li>
+            <li>{{ current_weather_data['current']['humidity'] }}% humidity</li>
+            <li>{{ current_weather_data['current']['pressure'] }} hPa</li>
+
+
+
+
+    </div>
+
+    <div class="shadowed stuff-box black">
+        <h2>Your Location</h2>
+        <p>You are located in {{ ip_stack_data['city'] }}, {{ ip_stack_data['region_name'] }} at coordinates ({{ ip_stack_data['latitude'] }}, {{ ip_stack_data['longitude'] }}).</p>
+    </div>
+
+
+
+    <div class="shadowed stuff-box aquamarine">
+        <h2>5 day 3-hour forecast</h2>
+        <p>{{ unlikely }} unlikely {{ neutral }} neutral {{ likely }}</p>
+
+
+        <div v-for="(div, idx) in divs" 
+            v-bind:class="div.classes[div.index]"
+            v-on:click="toggle"
+            v-bind:data-index="idx"
+                >
+            <h2>conditions for {{ div.weather_data['dt_txt'] }}</h2>
+            <ul>
+                <li>Tempurature {{ div.weather_data['main']['temp'] }} F</li>
+                <li>{{ div.weather_data['weather'][0]['description'] }}</li>
+                <li>{{ div.weather_data['main']['humidity'] }}% humidity</li>
+                <li>{{ div.weather_data['main']['pressure']}} hPa</li>
+            </ul>
+
+        </div>
+    </div>
+
+    </div>
+
+
+</div>
+
+<script>
+
+
+
+let makeDivs = function(){
+
+    div = document.createElement("p");
+    div.append(document.createTextNode("hello there"))
+    
+    return div;
+}
+
+
+var app = new Vue({
+    
+    el: '#app',
+    data: {
+        open_weather_API: '8e6d94236cc3c93474103032be7207c2',
+        ip_stack_API: 'e5f9f0dfd9ed6c2f8684cd4f3dcdd793',
+        IP_address: undefined,
+
+        ip_stack_data: undefined,
+        open_weather_local_data : undefined,
+        current_weather_data : undefined,
+
+        loaded_data : false,
+
+        unlikely : 0,
+        neutral : 40,
+        likely : 0,
+
+        divs : [],
+
+        calls : 0,
+
+
+
+
+
+    },
+    created() {
+        console.log("Vue instance created");
+        var get_ip = fetch("https://api.ipify.org?format=json")
+            .then(response => response.json())
+            .then(json =>{this.IP_address = json['ip'];
+            return fetch(`http://api.ipstack.com/${this.IP_address}?access_key=${this.ip_stack_API}&format=1`)
+            
+        })
+            .then(response => response.json())
+            .then(json => {
+                this.ip_stack_data = json;
+                
+                
+                return fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${json['latitude']}&lon=${json['longitude']}&appid=${this.open_weather_API}&units=imperial`);
+            })
+            .then(response => response.json())
+            .then(json => {
+                this.open_weather_local_data = json;
+            })
+            // populate data divs
+            .then(json => {              
+                
+
+                for (let i=0; i<this.open_weather_local_data['list'].length; i++){
+                    var dateDivData = {
+                        'done' : true, 
+                        "weather_data" : this.open_weather_local_data['list'][i],
+                        "classes" : ["shadowed stuff-box gray", "shadowed stuff-box red", "shadowed stuff-box green"],
+                        "index" : 0,
+                        }
+                    this.divs.push(dateDivData);
+                    
+                }
+                this.calls++;
+
+            });
+        var get_current = fetch("https://api.ipify.org?format=json")
+            .then(response => response.json())
+            .then(json =>{
+                this.IP_address = json['ip'];
+                return fetch(`http://api.ipstack.com/${this.IP_address}?access_key=${this.ip_stack_API}&format=1`)
+            })
+            .then(response => response.json())
+            .then(json => {
+                return fetch(`https://api.openweathermap.org/data/2.5/onecall?lat=${json['latitude']}&lon=${json['longitude']}&appid=${this.open_weather_API}&units=imperial`);
+            })
+            .then(response => response.json())
+            .then(json => {
+                this.current_weather_data = json;
+                this.current_weather_data['current']['date_time'] = new Date(this.current_weather_data['current']['dt'] * 1000).toLocaleString();
+                this.calls++;
+            });
+
+
+        },
+    
+    methods: {
+        toggle: function(event){
+            let target = event.target;
+        
+            if (target.localName == "div"){
+                var i = target.getAttribute('data-index');
+            }else if (target.localName == "li"){
+                var i = target.parentNode.parentNode.getAttribute('data-index');
+            }else if (target.localName == "h2"){
+                var i = target.parentNode.getAttribute('data-index');
+            }
+            let value = this.divs[i];
+            if (value.index == 0){
+                value.index = 1;
+                this.neutral--;
+                this.unlikely++;
+            }
+            else if(value.index == 1){
+                value.index = 2;
+                this.unlikely--;
+                this.likely++;
+            }
+            else{
+                value.index = 0;
+                this.likely--;
+                this.neutral++;
+            }
+
+        },
+
+
+
+    }
+
+
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
+
+
+</body>
+
+</html>
